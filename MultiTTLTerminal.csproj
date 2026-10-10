@@ -9,7 +9,9 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\MultiTTLTerminal.Engine\MultiTTLTerminal.Engine.csproj" />
+		<Reference Include="MultiTTLTerminal.Engine">
+			<HintPath>lib\MultiTTLTerminal.Engine.dll</HintPath>
+		</Reference>
 	</ItemGroup>
 
 </Project>

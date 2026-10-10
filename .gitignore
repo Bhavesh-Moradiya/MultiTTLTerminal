@@ -1,7 +1,12 @@
+# Temporary & Private Files
+bin/
+obj/
+.vs/
 *.pem
 *.pfx
 *.log
 Log_*
-bin/
-obj/
-.vs/
+
+# Force tracking of the protected library DLL
+!lib/
+!lib/MultiTTLTerminal.Engine.dll

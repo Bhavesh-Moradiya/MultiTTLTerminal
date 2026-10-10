@@ -10,3 +10,7 @@ Log_*
 # Force tracking of the protected library DLL
 !lib/
 !lib/MultiTTLTerminal.Engine.dll
+
+# Force tracking of the published executable
+!exe/
+!exe/*.exe

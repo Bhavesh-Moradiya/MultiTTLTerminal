@@ -11,6 +11,8 @@ Log_*
 !lib/
 !lib/MultiTTLTerminal.Engine.dll
 
-# Force tracking of the release zip archive
-!release/
-!release/*.zip
+# Exclude standalone executables and release archives from git tree
+release/
+exe/
+*.zip
+*.exe

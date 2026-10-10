@@ -16,3 +16,6 @@ release/
 exe/
 *.zip
 *.exe
+
+# Exclude Visual Studio Publish Profiles
+Properties/PublishProfiles/

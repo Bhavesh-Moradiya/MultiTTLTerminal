@@ -1,0 +1,7 @@
+*.pem
+*.pfx
+*.log
+Log_*
+bin/
+obj/
+.vs/

@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36301.6
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MultiTTLTerminal", "MultiTTLTerminal.csproj", "{9094B885-2DED-4A18-B7AB-476C608C4152}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MultiTTLTerminal.Engine", "..\MultiTTLTerminal.Engine\MultiTTLTerminal.Engine.csproj", "{49C5631A-3F8A-4481-A6E1-E3BB5A2F2902}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9094B885-2DED-4A18-B7AB-476C608C4152}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9094B885-2DED-4A18-B7AB-476C608C4152}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9094B885-2DED-4A18-B7AB-476C608C4152}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9094B885-2DED-4A18-B7AB-476C608C4152}.Release|Any CPU.Build.0 = Release|Any CPU
+		{49C5631A-3F8A-4481-A6E1-E3BB5A2F2902}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{49C5631A-3F8A-4481-A6E1-E3BB5A2F2902}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{49C5631A-3F8A-4481-A6E1-E3BB5A2F2902}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{49C5631A-3F8A-4481-A6E1-E3BB5A2F2902}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {01D98850-A065-4503-AE0D-6130416DEE71}
+	EndGlobalSection
+EndGlobal

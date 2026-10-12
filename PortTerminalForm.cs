@@ -11,9 +11,9 @@ namespace MultiTTLTerminal
     // Data model class for history tracking
     public class LogEntry
     {
-        public string Timestamp { get; set; }
-        public string Direction { get; set; } // "RX" or "TX"
-        public byte[] RawData { get; set; }
+        public string Timestamp { get; set; } = string.Empty;
+        public string Direction { get; set; } = string.Empty; // "RX" or "TX"
+        public byte[] RawData { get; set; } = Array.Empty<byte>();
     }
 
     public class PortTerminalForm : Form
@@ -26,24 +26,24 @@ namespace MultiTTLTerminal
         private System.Windows.Forms.Timer _rxTimer;
         private readonly object _lockObj = new object();
 
-        private RichTextBox rtbLog;
-        private RadioButton rdbAsciiView;
-        private RadioButton rdbHexView;
-        private Button btnClearScreen;
-        private TrackBar tbOpacity;
-        private Label lblOpacity;
+        private RichTextBox rtbLog = null!;
+        private RadioButton rdbAsciiView = null!;
+        private RadioButton rdbHexView = null!;
+        private Button btnClearScreen = null!;
+        private TrackBar tbOpacity = null!;
+        private Label lblOpacity = null!;
 
-        private TextBox txtInput;
-        private Button btnSend;
-        private CheckBox chkAutoCRLF;
+        private TextBox txtInput = null!;
+        private Button btnSend = null!;
+        private CheckBox chkAutoCRLF = null!;
 
-        private CheckBox chkLogToFile;
-        private TextBox txtLogPath;
-        private Button btnBrowseLog;
-        private Button btnResetLogFile;
+        private CheckBox chkLogToFile = null!;
+        private TextBox txtLogPath = null!;
+        private Button btnBrowseLog = null!;
+        private Button btnResetLogFile = null!;
 
-        private StatusStrip statusStrip;
-        private ToolStripStatusLabel lblStatus;
+        private StatusStrip statusStrip = null!;
+        private ToolStripStatusLabel lblStatus = null!;
 
         public PortTerminalForm(ITerminalStream stream)
         {
@@ -57,7 +57,7 @@ namespace MultiTTLTerminal
             _rxTimer = new System.Windows.Forms.Timer { Interval = 50 };
             _rxTimer.Tick += RxTimer_Tick;
 
-            // FIX: Defer InitStream until Window Handle is fully created and shown
+            // Defer InitStream until Window Handle is fully created and shown
             this.Shown += (s, e) => InitStream();
         }
 
@@ -71,7 +71,9 @@ namespace MultiTTLTerminal
             rdbAsciiView = new RadioButton { Text = "ASCII/Text", Location = new Point(10, 18), AutoSize = true, Checked = true };
             rdbHexView = new RadioButton { Text = "HEX Format", Location = new Point(100, 18), AutoSize = true };
             btnClearScreen = new Button { Text = "Clear Screen", Location = new Point(185, 15), Width = 80, Height = 25 };
+
             rdbAsciiView.CheckedChanged += DisplayMode_CheckedChanged;
+            rdbHexView.CheckedChanged += DisplayMode_CheckedChanged;
             btnClearScreen.Click += (s, e) => { _history.Clear(); rtbLog.Clear(); };
             grpDisplayMode.Controls.Add(rdbAsciiView); grpDisplayMode.Controls.Add(rdbHexView); grpDisplayMode.Controls.Add(btnClearScreen);
 
@@ -102,6 +104,11 @@ namespace MultiTTLTerminal
             // TX Window
             Label lblInput = new Label { Text = "TX Payload:", Location = new Point(12, 470), AutoSize = true };
             txtInput = new TextBox { Location = new Point(12, 490), Width = 580, Height = 55, Multiline = true, ScrollBars = ScrollBars.Vertical, Font = new Font("Consolas", 10F) };
+
+            // Real-time conversion and focus leave event subscriptions
+            txtInput.KeyPress += TxtInput_KeyPress;
+            txtInput.Leave += TxtInput_Leave;
+
             chkAutoCRLF = new CheckBox { Text = "Auto \\r\\n", Checked = true, Location = new Point(602, 505), AutoSize = true };
             btnSend = new Button { Text = "SEND", Location = new Point(720, 490), Width = 132, Height = 55, Font = new Font("Segoe UI", 11F, FontStyle.Bold), BackColor = Color.LightSteelBlue };
             btnSend.Click += (s, e) => SendData();
@@ -122,7 +129,7 @@ namespace MultiTTLTerminal
             try
             {
                 _stream.DataReceived += Stream_DataReceived;
-                _stream.ServerClosed += Stream_ServerClosed; // Handle server closure
+                _stream.ServerClosed += Stream_ServerClosed;
                 _stream.Open();
 
                 if (this.IsHandleCreated)
@@ -158,7 +165,6 @@ namespace MultiTTLTerminal
                 {
                     lblStatus.Text = $"Status: Connection Closed by Server ({_stream.Name})";
 
-                    // Print a system log entry in the terminal view
                     string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
 
                     rtbLog.SelectionStart = rtbLog.TextLength;
@@ -205,6 +211,71 @@ namespace MultiTTLTerminal
             RecordAndDisplayData(completePacket, "RX");
         }
 
+        /// <summary>
+        /// Converts any raw string (ASCII characters) to space-separated HEX bytes.
+        /// Example: "G" -> "47", "Hello" -> "48 65 6C 6C 6F"
+        /// </summary>
+        private string ConvertTextToHexString(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return string.Empty;
+
+            string clean = text.Replace(" ", "").Replace("0x", "").Replace("0X", "");
+            if (System.Text.RegularExpressions.Regex.IsMatch(clean, @"\A\b[0-9a-fA-F]+\b\Z") && clean.Length % 2 == 0)
+            {
+                return text; // Keep existing hex string intact
+            }
+
+            byte[] bytes = Encoding.UTF8.GetBytes(text);
+            return BitConverter.ToString(bytes).Replace("-", " ");
+        }
+
+        /// <summary>
+        /// Converts space-separated HEX string back to ASCII text.
+        /// Example: "47" -> "G", "48 65 6C 6C 6F" -> "Hello"
+        /// </summary>
+        private string ConvertHexStringToText(string hex)
+        {
+            try
+            {
+                byte[] bytes = ParseHexOrTextStringToBytes(hex);
+                return Encoding.UTF8.GetString(bytes);
+            }
+            catch
+            {
+                return hex; // Fallback to raw text if parsing fails
+            }
+        }
+
+        private void TxtInput_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (rdbHexView.Checked)
+            {
+                if (char.IsControl(e.KeyChar)) return;
+
+                // If key pressed is NOT a valid hex digit (0-9, A-F, a-f) and not a space
+                if (!Uri.IsHexDigit(e.KeyChar) && e.KeyChar != ' ')
+                {
+                    e.Handled = true; // Suppress raw ASCII character input
+
+                    // Convert key directly to 2-digit HEX representation
+                    byte keyByte = (byte)e.KeyChar;
+                    string hexChar = keyByte.ToString("X2") + " ";
+
+                    int selectionStart = txtInput.SelectionStart;
+                    txtInput.Text = txtInput.Text.Insert(selectionStart, hexChar);
+                    txtInput.SelectionStart = selectionStart + hexChar.Length;
+                }
+            }
+        }
+
+        private void TxtInput_Leave(object sender, EventArgs e)
+        {
+            if (rdbHexView.Checked && !string.IsNullOrEmpty(txtInput.Text))
+            {
+                txtInput.Text = ConvertTextToHexString(txtInput.Text);
+            }
+        }
+
         private void SendData()
         {
             if (_stream == null || !_stream.IsConnected)
@@ -221,25 +292,65 @@ namespace MultiTTLTerminal
 
                 if (rdbHexView.Checked)
                 {
-                    string cleanHex = input.Replace(" ", "").Replace("0x", "").Replace("\r", "").Replace("\n", "");
-                    if (cleanHex.Length % 2 != 0) cleanHex = "0" + cleanHex;
-                    payload = new byte[cleanHex.Length / 2];
-                    for (int i = 0; i < payload.Length; i++)
-                        payload[i] = Convert.ToByte(cleanHex.Substring(i * 2, 2), 16);
+                    string hexPayload = input;
+
+                    // Append \r\n (0D 0A in HEX) if Auto CRLF is checked
+                    if (chkAutoCRLF.Checked)
+                    {
+                        hexPayload += " 0D 0A";
+                    }
+
+                    payload = ParseHexOrTextStringToBytes(hexPayload);
                 }
                 else
                 {
-                    string textToSend = txtInput.Text;
+                    string textToSend = input;
                     if (chkAutoCRLF.Checked) textToSend += "\r\n";
                     payload = Encoding.UTF8.GetBytes(textToSend);
                 }
 
-                _stream.Write(payload, 0, payload.Length);
-                RecordAndDisplayData(payload, "TX");
+                if (payload.Length > 0)
+                {
+                    _stream.Write(payload, 0, payload.Length);
+                    RecordAndDisplayData(payload, "TX");
+                }
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Send Error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        private byte[] ParseHexOrTextStringToBytes(string input)
+        {
+            string cleanInput = input.Replace(" ", "")
+                                     .Replace("0x", "")
+                                     .Replace("0X", "")
+                                     .Replace("-", "")
+                                     .Replace(",", "")
+                                     .Replace("\r", "")
+                                     .Replace("\n", "");
+
+            if (string.IsNullOrEmpty(cleanInput)) return Array.Empty<byte>();
+
+            bool isPureHex = System.Text.RegularExpressions.Regex.IsMatch(cleanInput, @"\A\b[0-9a-fA-F]+\b\Z");
+
+            if (isPureHex)
+            {
+                if (cleanInput.Length % 2 != 0) cleanInput = "0" + cleanInput;
+
+                byte[] bytes = new byte[cleanInput.Length / 2];
+                for (int i = 0; i < bytes.Length; i++)
+                {
+                    bytes[i] = Convert.ToByte(cleanInput.Substring(i * 2, 2), 16);
+                }
+                return bytes;
+            }
+            else
+            {
+                string textToSend = input;
+                if (chkAutoCRLF.Checked) textToSend += "\r\n";
+                return Encoding.UTF8.GetBytes(textToSend);
             }
         }
 
@@ -273,7 +384,20 @@ namespace MultiTTLTerminal
 
         private void DisplayMode_CheckedChanged(object sender, EventArgs e)
         {
-            chkAutoCRLF.Enabled = rdbAsciiView.Checked;
+            chkAutoCRLF.Enabled = true; // Auto CRLF remains available in both modes
+
+            if (!string.IsNullOrEmpty(txtInput.Text))
+            {
+                if (rdbHexView.Checked)
+                {
+                    txtInput.Text = ConvertTextToHexString(txtInput.Text);
+                }
+                else
+                {
+                    txtInput.Text = ConvertHexStringToText(txtInput.Text);
+                }
+            }
+
             RenderTerminalView();
         }
 
@@ -290,10 +414,8 @@ namespace MultiTTLTerminal
 
             _history.Add(entry);
 
-            // Update Terminal GUI
             RenderEntry(entry);
 
-            // Write to Disk Log File
             if (chkLogToFile.Checked && !string.IsNullOrEmpty(_logFilePath))
             {
                 try
@@ -305,7 +427,6 @@ namespace MultiTTLTerminal
                     }
                     else
                     {
-                        // Split multi-line ASCII packets so EVERY line gets its own timestamp tag
                         string rawText = Encoding.UTF8.GetString(data).Replace("\r", "");
                         string[] lines = rawText.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
@@ -317,7 +438,7 @@ namespace MultiTTLTerminal
                 }
                 catch
                 {
-                    // Ignore transient file lock issues
+                    // Catch transient log write contention
                 }
             }
         }
